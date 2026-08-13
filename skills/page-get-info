@@ -1,0 +1,185 @@
+# Skill: page-get-info 获取当前页面基础信息
+
+## 基础信息
+
+| 字段 | 内容 |
+| ---- | ---- |
+| skill_id | page-get-info |
+| display_name | 获取当前页面基础信息 |
+| version | 1.0.0 |
+| author | YourName |
+| category | frontend-browser,page |
+| description | 获取当前浏览器页面通用信息：页面标题、URL、域名、视口尺寸、滚动位置、页面语言等基础数据；仅浏览器环境可用。 |
+| tags | browser,page,url,title,视口信息,页面元数据 |
+| permission | 无需额外权限，原生页面能力 |
+
+## 能力说明
+
+1. 获取页面标题、完整URL、主机域名
+2. 获取浏览器可视区域宽高、文档总宽高
+3. 获取当前页面横向/纵向滚动位置
+4. 获取页面语言、userAgent精简信息
+5. 支持按需开启/关闭部分字段，减少返回数据体积
+
+## 入参定义（JSON Schema）
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "needViewport": {
+      "type": "boolean",
+      "description": "是否返回视口与文档尺寸信息",
+      "default": true
+    },
+    "needScroll": {
+      "type": "boolean",
+      "description": "是否返回当前页面滚动位置",
+      "default": true
+    },
+    "needAgent": {
+      "type": "boolean",
+      "description": "是否返回精简userAgent",
+      "default": false
+    }
+  }
+}
+```
+
+## 出参结构
+
+```json
+{
+  "success": boolean,
+  "code": number,
+  "msg": string,
+  "data": {
+    "title": string,
+    "href": string,
+    "hostname": string,
+    "lang": string,
+    "viewport": {
+      "clientWidth": number,
+      "clientHeight": number,
+      "scrollWidth": number,
+      "scrollHeight": number
+    } | null,
+    "scroll": {
+      "scrollX": number,
+      "scrollY": number
+    } | null,
+    "userAgent": string | null
+  }
+}
+```
+状态码说明
+- 200：获取信息成功
+- 403：非浏览器环境，无法访问页面信息
+
+## 前端可执行JS代码
+
+```js
+async function run(params) {
+  const { needViewport = true, needScroll = true, needAgent = false } = params;
+  try {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return {
+        success: false,
+        code: 403,
+        msg: "非浏览器环境，无法读取页面信息",
+        data: null
+      }
+    }
+
+    const data = {
+      title: document.title,
+      href: location.href,
+      hostname: location.hostname,
+      lang: document.documentElement.lang || navigator.language,
+      viewport: null,
+      scroll: null,
+      userAgent: null
+    };
+
+    if (needViewport) {
+      data.viewport = {
+        clientWidth: document.documentElement.clientWidth,
+        clientHeight: document.documentElement.clientHeight,
+        scrollWidth: document.documentElement.scrollWidth,
+        scrollHeight: document.documentElement.scrollHeight
+      };
+    }
+
+    if (needScroll) {
+      data.scroll = {
+        scrollX: window.scrollX,
+        scrollY: window.scrollY
+      };
+    }
+
+    if (needAgent) {
+      data.userAgent = navigator.userAgent;
+    }
+
+    return {
+      success: true,
+      code: 200,
+      msg: "页面信息获取成功",
+      data
+    }
+  } catch (err) {
+    return {
+      success: false,
+      code: 500,
+      msg: `获取页面信息异常：${err.message}`,
+      data: null
+    }
+  }
+}
+```
+
+## AI调用约束规则
+
+1. 需要确认当前网页地址、页面标题、页面可视范围时调用
+2. 不要频繁循环调用，避免无意义数据采集
+3. 禁止利用该技能批量爬取网站内容
+4. 无法获取iframe内部页面信息
+
+## 使用示例
+
+### 调用入参示例
+
+```json
+{
+  "needViewport": true,
+  "needScroll": true,
+  "needAgent": false
+}
+```
+
+### 成功返回示例
+
+```json
+{
+  "success": true,
+  "code": 200,
+  "msg": "页面信息获取成功",
+  "data": {
+    "title": "Github - Frontend Agent Skill",
+    "href": "https://github.com/xxx/frontend-agent-skills",
+    "hostname": "github.com",
+    "lang": "zh-CN",
+    "viewport": {
+      "clientWidth": 1440,
+      "clientHeight": 820,
+      "scrollWidth": 1440,
+      "scrollHeight": 2600
+    },
+    "scroll": {
+      "scrollX": 0,
+      "scrollY": 120
+    },
+    "userAgent": null
+  }
+}
+```
